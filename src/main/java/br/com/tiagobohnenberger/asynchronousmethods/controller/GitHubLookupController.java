@@ -25,10 +25,18 @@ public class GitHubLookupController {
     }
 
     @GetMapping
-    public ResponseEntity<List<GitHubUserResponseDTO>> findAllByUserName(
+    public ResponseEntity<List<GitHubUserResponseDTO>> findAllCompletableFuture(
             @RequestParam(name = "names") List<String> usersName
     ) {
-        List<GitHubUserResponseDTO> users = userService.getAll(usersName);
+        List<GitHubUserResponseDTO> users = userService.getAllUsingCompletableFuture(usersName);
+        return ResponseEntity.ok(users);
+    }
+
+    @GetMapping(path = "/v2")
+    public ResponseEntity<List<GitHubUserResponseDTO>> findAllReactor(
+            @RequestParam(name = "names") List<String> usersName
+    ) {
+        List<GitHubUserResponseDTO> users = userService.getAllUsingReactor(usersName);
         return ResponseEntity.ok(users);
     }
 }

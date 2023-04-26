@@ -3,6 +3,7 @@ package br.com.tiagobohnenberger.asynchronousmethods.service;
 import br.com.tiagobohnenberger.asynchronousmethods.dto.GitHubUserResponseDTO;
 import br.com.tiagobohnenberger.asynchronousmethods.model.User;
 import br.com.tiagobohnenberger.asynchronousmethods.service.exception.GitHubApiTimeoutException;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -11,6 +12,8 @@ import java.util.concurrent.TimeoutException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Schedulers;
 
 @Slf4j
 @Service
@@ -21,10 +24,10 @@ public class UserService {
 
     public GitHubUserResponseDTO getByName(String userName) {
         try {
-            CompletableFuture<User> futureUser = gitHubLookupService.findUser(userName);
+            CompletableFuture<User> futureUser = gitHubLookupService.findUserFuture(userName);
             return new GitHubUserResponseDTO(futureUser.get(2, TimeUnit.SECONDS));
         } catch (InterruptedException | ExecutionException e) {
-            log.error("Error due fething data from GitHub for user {}", userName);
+            log.error("Error due fetching data from GitHub for user {}", userName);
             throw new RuntimeException(e);
         } catch (TimeoutException e) {
             log.error("Timeout on looking up user {}", userName);
@@ -32,11 +35,26 @@ public class UserService {
         }
     }
 
-    public List<GitHubUserResponseDTO> getAll(List<String> usersName) {
+    public List<GitHubUserResponseDTO> getAllUsingCompletableFuture(List<String> usersName) {
         return usersName.parallelStream()
-                .map(gitHubLookupService::findUser)
+                .map(gitHubLookupService::findUserFuture)
                 .map(CompletableFuture::join)
                 .map(GitHubUserResponseDTO::new)
                 .toList();
+    }
+
+    public List<GitHubUserResponseDTO> getAllUsingReactor(List<String> usersName) {
+        return Flux.fromIterable(usersName)
+                .parallel()
+                .runOn(Schedulers.parallel())
+                .flatMap(gitHubLookupService::findUserMono)
+                .map(GitHubUserResponseDTO::new)
+                .ordered(byName())
+                .collectList()
+                .block();
+    }
+
+    private static Comparator<GitHubUserResponseDTO> byName() {
+        return Comparator.comparing(GitHubUserResponseDTO::name);
     }
 }
