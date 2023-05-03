@@ -3,6 +3,9 @@ package br.com.tiagobohnenberger.asynchronousmethods.service;
 import br.com.tiagobohnenberger.asynchronousmethods.dto.GitHubUserResponseDTO;
 import br.com.tiagobohnenberger.asynchronousmethods.model.User;
 import br.com.tiagobohnenberger.asynchronousmethods.service.exception.GitHubApiTimeoutException;
+import br.com.tiagobohnenberger.asynchronousmethods.service.exception.GitHubForbiddenException;
+import br.com.tiagobohnenberger.asynchronousmethods.service.exception.ResourceNotFoundException;
+import java.time.Duration;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -22,7 +25,7 @@ public class UserService {
 
     private final GitHubLookupService gitHubLookupService;
 
-    public GitHubUserResponseDTO getByName(String userName) {
+    public GitHubUserResponseDTO getByNameFuture(String userName) {
         try {
             CompletableFuture<User> futureUser = gitHubLookupService.findUserFuture(userName);
             return new GitHubUserResponseDTO(futureUser.get(2, TimeUnit.SECONDS));
@@ -33,6 +36,13 @@ public class UserService {
             log.error("Timeout on looking up user {}", userName);
             throw new GitHubApiTimeoutException("Timeout on looking up user", e);
         }
+    }
+
+    public GitHubUserResponseDTO getByNameMono(String userName) {
+        User user = gitHubLookupService.findUserMono(userName)
+                .blockOptional(Duration.ofSeconds(1))
+                .orElseThrow(() -> new ResourceNotFoundException("User " + userName + " not found"));
+        return new GitHubUserResponseDTO(user);
     }
 
     public List<GitHubUserResponseDTO> getAllUsingCompletableFuture(List<String> usersName) {
@@ -51,6 +61,13 @@ public class UserService {
                 .map(GitHubUserResponseDTO::new)
                 .ordered(byName())
                 .collectList()
+                .onErrorMap(throwable -> {
+                    Throwable t = throwable.getSuppressed()[0];
+                    if (t instanceof GitHubForbiddenException) {
+                        return new GitHubForbiddenException(t.getLocalizedMessage());
+                    }
+                    return new RuntimeException(throwable.getLocalizedMessage());
+                })
                 .block();
     }
 

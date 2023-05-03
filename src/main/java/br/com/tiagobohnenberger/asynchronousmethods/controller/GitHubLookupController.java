@@ -19,8 +19,14 @@ public class GitHubLookupController {
     private final UserService userService;
 
     @GetMapping(path = "/{userName}")
-    public ResponseEntity<GitHubUserResponseDTO> findByUserName(@PathVariable("userName") String userName) {
-        GitHubUserResponseDTO user = userService.getByName(userName);
+    public ResponseEntity<GitHubUserResponseDTO> findByUserNameFuture(@PathVariable(value = "userName") String userName) {
+        GitHubUserResponseDTO user = userService.getByNameFuture(userName);
+        return ResponseEntity.ok(user);
+    }
+
+    @GetMapping(path = "/v2/{userName}")
+    public ResponseEntity<GitHubUserResponseDTO> findByUserNameMono(@PathVariable("userName") String userName) {
+        GitHubUserResponseDTO user = userService.getByNameMono(userName);
         return ResponseEntity.ok(user);
     }
 
