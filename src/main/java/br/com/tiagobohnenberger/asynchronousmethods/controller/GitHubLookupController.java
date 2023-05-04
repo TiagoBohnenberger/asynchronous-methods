@@ -24,18 +24,20 @@ public class GitHubLookupController {
         return ResponseEntity.ok(user);
     }
 
-    @GetMapping(path = "/v2/{userName}")
-    public ResponseEntity<GitHubUserResponseDTO> findByUserNameMono(@PathVariable("userName") String userName) {
-        GitHubUserResponseDTO user = userService.getByNameMono(userName);
-        return ResponseEntity.ok(user);
-    }
-
     @GetMapping
     public ResponseEntity<List<GitHubUserResponseDTO>> findAllCompletableFuture(
             @RequestParam(name = "names") List<String> usersName
     ) {
         List<GitHubUserResponseDTO> users = userService.getAllUsingCompletableFuture(usersName);
         return ResponseEntity.ok(users);
+    }
+
+    //============== VERSION 2 API ==============
+
+    @GetMapping(path = "/v2/{userName}")
+    public ResponseEntity<GitHubUserResponseDTO> findByUserNameMono(@PathVariable("userName") String userName) {
+        GitHubUserResponseDTO user = userService.getByNameMono(userName);
+        return ResponseEntity.ok(user);
     }
 
     @GetMapping(path = "/v2")
