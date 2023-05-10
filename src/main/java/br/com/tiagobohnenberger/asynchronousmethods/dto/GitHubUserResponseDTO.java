@@ -7,6 +7,6 @@ public record GitHubUserResponseDTO(
         String blog
 ) {
     public GitHubUserResponseDTO(User user) {
-        this(user.getName(), user.getBlog());
+        this(user.name(), user.blog());
     }
 }
